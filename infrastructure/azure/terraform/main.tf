@@ -46,6 +46,36 @@ resource "azurerm_storage_account" "storage_blob" {
   location                 = "${azurerm_resource_group.storage_blob.location}"
   account_tier             = "Standard"
   account_replication_type = "LRS"
+
+  rule {
+    name = "rule_lc"
+    enabled = true
+    type = "Lifecycle"
+    definition {
+      filters {
+        prefix_match = ["container1/wibble"]
+        blob_types = ["blockBlob"]
+      }
+      actions = {
+        base_blob {
+          tier_to_cool {
+            days_after_modification_greater_than = 30
+          }
+          tier_to_archive { 
+            days_after_modification_greater_than = 90
+          }
+          delete {
+              days_after_modification_greater_than = 2555
+          }
+        snapshot {
+          delete {
+            days_after_creation_greater_than = 90
+          }
+        }
+      }
+    }
+  }
+  }
 }
 
 resource "azurerm_storage_container" "storage_blob" {
@@ -61,5 +91,5 @@ resource "azurerm_storage_blob" "storage_blob" {
   storage_account_name = "${azurerm_storage_account.storage_blob.name}"
   storage_container_name = "${azurerm_storage_container.storage_blob.name}"
   type                   = "Block"
-  source                 = "some-local-file.zip"
+  #source                 = "some-local-file.zip"
 }
