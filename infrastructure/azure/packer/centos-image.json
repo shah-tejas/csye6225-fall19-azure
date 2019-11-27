@@ -1,0 +1,48 @@
+{
+    "variables": {
+        "client_id": "",
+        "client_secret": "",
+        "tenant_id": "",
+        "subscription_id": "",
+        "resource_group_name": "myResourceGroup",
+        "location":"East US"
+    },
+    "builders": [{
+      "type": "azure-arm",
+  
+      "client_id": "{{user `client_id`}}",
+      "client_secret": "{{user `client_secret`}}",
+      "tenant_id": "{{user `tenant_id`}}",
+      "subscription_id": "{{user `subscription_id`}}",
+  
+      "managed_image_resource_group_name": "{{user `resource_group_name`}}",
+      "managed_image_name": "csye6225_{{timestamp}}",
+  
+      "os_type": "Linux",
+      "image_publisher": "OpenLogic",
+      "image_offer": "CentOS",
+      "image_sku": "7.5",
+
+      "azure_tags": {
+        "OS_Version": "centos",
+        "Release": "Latest"
+      },
+  
+      "location": "{{user `location`}}",
+      "vm_size": "Standard_DS2_v2"
+    }],
+    "provisioners": [
+        {
+            "type": "file",
+            "source": "provisioner_script.sh",
+            "destination": "/tmp/provisioner_script.sh"
+        },
+        {
+            "type": "shell",
+            "inline": [
+                "chmod u+x /tmp/provisioner_script.sh",
+                "/tmp/provisioner_script.sh"
+            ]
+        }
+    ]
+}
