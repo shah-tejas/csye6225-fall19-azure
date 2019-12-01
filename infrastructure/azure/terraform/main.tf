@@ -163,9 +163,11 @@ resource "azurerm_storage_blob" "storage_blob" {
 }
 
 #FIREWALL
+
+#update the alb parameter and lb_resource arn once created
 resource "azurerm_resource_group" "example" {
   name     = "firewall"
-  location = "West US"
+  location = "${var.region}"
 }
 
 resource "azurerm_template_deployment" "example"{
