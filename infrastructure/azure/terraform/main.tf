@@ -22,7 +22,6 @@ resource "azurerm_subnet" "main" {
   resource_group_name = azurerm_resource_group.ccwebapp.name
   virtual_network_name = azurerm_virtual_network.app_network.name
   address_prefix = var.subnet_addresses[count.index]
-
 }
 
 
@@ -135,7 +134,7 @@ resource "azurerm_virtual_machine" "main" {
     admin_username = "testadmin"
   }
   os_profile_linux_config {
-    disable_password_authentication = false
+    disable_password_authentication = true
     ssh_keys {
       key_data = var.ssh_public_key
       path = "/home/testadmin/.ssh/authorized_keys"
