@@ -13,25 +13,10 @@ resource "azurerm_virtual_network" "app_network" {
   location = azurerm_resource_group.ccwebapp.location
   name = "app_virtual_network"
   resource_group_name = azurerm_resource_group.ccwebapp.name
-
-  # subnet {
-  #   address_prefix = "${var.subnet_addresses[0]}"
-  #   name = "subnet1"
-  # }
-
-  # subnet {
-  #   address_prefix = "${var.subnet_addresses[1]}"
-  #   name = "subnet2"
-  # }
-
-  # subnet {
-  #   address_prefix = "${var.subnet_addresses[2]}"
-  #   name = "subnet3"
-  # }
 }
 
 resource "azurerm_subnet" "main" {
-  count = 3
+  count = 2
 
   name = "subnet-${count.index}"
   resource_group_name = azurerm_resource_group.ccwebapp.name
@@ -67,6 +52,19 @@ resource "azurerm_network_security_group" "network_sg" {
   name = "network_security_group"
   resource_group_name = azurerm_resource_group.ccwebapp.name
   location = var.region
+
+  security_rule {
+    name                       = "HTTP"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
   security_rule {
     access = "Allow"
     direction = "Inbound"
@@ -142,6 +140,7 @@ resource "azurerm_virtual_machine" "main" {
       path = "/home/testadmin/.ssh/authorized_keys"
     }
   }
+
   tags = {
     environment = "staging"
   }
@@ -210,3 +209,61 @@ resource "azurerm_virtual_machine" "main" {
 //  type                   = "Block"
 //  #source                 = "some-local-file.zip"
 //}
+
+
+resource "azurerm_postgresql_server" "example" {
+  name                = "ccwebapp-postgresql"
+  location            = "${azurerm_resource_group.ccwebapp.location}"
+  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+
+  sku {
+    name     = "GP_Gen5_2"
+    capacity = 2
+    tier     = "GeneralPurpose"
+    family   = "Gen5"
+  }
+
+  storage_profile {
+    storage_mb            = 5120
+    backup_retention_days = 7
+    geo_redundant_backup  = "Disabled"
+  }
+
+  administrator_login          = "psqladminun"
+  administrator_login_password = "H@Sh1CoR3!"
+  version                      = "9.5"
+  ssl_enforcement              = "Disabled"
+}
+
+resource "azurerm_postgresql_virtual_network_rule" "example" {
+  name                                 = "postgresql-vnet-rule"
+  resource_group_name                  = "${azurerm_resource_group.ccwebapp.name}"
+  server_name                          = "${azurerm_postgresql_server.example.name}"
+  subnet_id                            = "${azurerm_subnet.dbsub.id}"
+  ignore_missing_vnet_service_endpoint = true
+}
+
+# DB SUBNET
+resource "azurerm_subnet" "dbsub" {
+  name                 = "dbsubn"
+  resource_group_name  = "${azurerm_resource_group.ccwebapp.name}"
+  virtual_network_name = "${azurerm_virtual_network.app_network.name}"
+  address_prefix       = "${var.subnet_addresses[2]}"
+  service_endpoints    = ["Microsoft.Sql"]
+}
+
+resource "azurerm_postgresql_firewall_rule" "example" {
+  name                = "office"
+  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+  server_name         = "${azurerm_postgresql_server.example.name}"
+  start_ip_address    = "0.0.0.0"
+  end_ip_address      = "255.255.255.255"
+}
+
+resource "azurerm_postgresql_database" "example" {
+  name                = "exampledb"
+  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+  server_name         = "${azurerm_postgresql_server.example.name}"
+  charset             = "UTF8"
+  collation           = "English_United States.1252"
+}
