@@ -78,6 +78,28 @@ resource "azurerm_network_security_group" "network_sg" {
     source_address_prefix = "*"
     destination_address_prefix = "*"
   }
+  security_rule {
+    access = "Allow"
+    direction = "Inbound"
+    name = "tomcat_access"
+    priority = 1000
+    protocol = "Tcp"
+    source_port_range = "*"
+    destination_port_range = "8080"
+    source_address_prefix = "*"
+    destination_address_prefix = "*"
+  }
+  security_rule {
+    access = "Allow"
+    direction = "Outbound"
+    name = "outbound_access"
+    priority = 1000
+    protocol = "*"
+    source_port_range = "*"
+    destination_port_range = "*"
+    source_address_prefix = "*"
+    destination_address_prefix = "*"
+  }
 }
 
 data "azurerm_image" "custom" {
@@ -108,17 +130,15 @@ resource "azurerm_virtual_machine" "main" {
     caching = "ReadWrite"
     create_option = "FromImage"
     managed_disk_type = "Standard_LRS"
-//    image_uri = data.azurerm_image.custom.id
   }
   os_profile {
     computer_name = "hostname"
     admin_username = "testadmin"
-//    admin_password = "Password1234!"
   }
   os_profile_linux_config {
     disable_password_authentication = true
     ssh_keys {
-      key_data = file("/home/tejas/.ssh/azure_key.pub")
+      key_data = var.ssh_public_key
       path = "/home/testadmin/.ssh/authorized_keys"
     }
   }

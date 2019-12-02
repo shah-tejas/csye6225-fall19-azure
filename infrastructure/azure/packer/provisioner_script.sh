@@ -46,6 +46,6 @@ sudo postgresql-setup initdb
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
 sudo adduser cloud
-sudo -u postgres createdb recipe
+sudo -u postgres createdb random
 sudo -u postgres createuser --createrole cloud --superuser
 sudo systemctl restart postgresql
