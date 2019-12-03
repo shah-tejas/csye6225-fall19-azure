@@ -272,11 +272,28 @@ resource "azurerm_postgresql_firewall_rule" "example" {
 #Load Balancer
 
 #Associate both Vm to the same resource group
+
+# resource "azurerm_virtual_network" "load_balancer" {
+#   name                = "acctvn"
+#   address_space       = [var.network_address]
+#   location            = "${azurerm_resource_group.ccwebapp.location}"
+#   resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+# }
+
+# resource "azurerm_subnet" "load_balancer" {
+#   count=2 
+#   name                 = "acctsub"
+#   resource_group_name  = "${azurerm_resource_group.ccwebapp.name}"
+#   virtual_network_name = "${azurerm_virtual_network.load_balancer.name}"
+#   address_prefix       = "var.subnet_addresses[count.index]"
+# }
+
 resource "azurerm_public_ip" "load_balancer" {
   name                = "PublicIPForLB"
   location            = var.region
   resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
   allocation_method   = "Static"
+   sku                 = "Standard"
   #domain_name_label   = "${azurerm_resource_group.ccwebapp.name}"
    tags = {
     environment = "staging"
@@ -300,15 +317,15 @@ resource "azurerm_lb_backend_address_pool" "load_balancer" {
   name                = "BackEndAddressPool"
 }
 
-resource "azurerm_lb_rule" "load_balancer" {
-  resource_group_name            = "${azurerm_resource_group.ccwebapp.name}"
-  loadbalancer_id                = "${azurerm_lb.load_balancer.id}"
-  name                           = "LBRule"
-  protocol                       = "Tcp"
-  frontend_port                  = 3389
-  backend_port                   = 3389
-  frontend_ip_configuration_name = "PublicIPAddress"
-}
+# resource "azurerm_lb_rule" "load_balancer" {
+#   resource_group_name            = "${azurerm_resource_group.ccwebapp.name}"
+#   loadbalancer_id                = "${azurerm_lb.load_balancer.id}"
+#   name                           = "LBRule"
+#   protocol                       = "Tcp"
+#   frontend_port                  = 3389
+#   backend_port                   = 3389
+#   frontend_ip_configuration_name = "PublicIPAddress"
+# }
 
 resource "azurerm_lb_nat_pool" "load_balancer" {
   resource_group_name            = "${azurerm_resource_group.ccwebapp.name}"
@@ -395,9 +412,9 @@ resource "azurerm_virtual_machine_scale_set" "load_balancer" {
     primary = true
 
     ip_configuration {
-      name                                   = "TestIPConfiguration"
+      name                                   = "IPConfiguration"
       primary                                = true
-      subnet_id                              = "${azurerm_subnet.dbsub.id}"
+      subnet_id                              = azurerm_subnet.main.0.id
       load_balancer_backend_address_pool_ids = ["${azurerm_lb_backend_address_pool.load_balancer.id}"]
       load_balancer_inbound_nat_rules_ids    = ["${azurerm_lb_nat_pool.load_balancer.id}"]
     }
@@ -408,6 +425,78 @@ resource "azurerm_virtual_machine_scale_set" "load_balancer" {
   }
 }
 
+resource "azurerm_autoscale_setting" "load_balancer" {
+  name                = "myAutoscaleSetting"
+  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+  location            = "${azurerm_resource_group.ccwebapp.location}"
+  target_resource_id  = "${azurerm_virtual_machine_scale_set.load_balancer.id}"
+
+  profile {
+    name = "Weekends"
+
+    capacity {
+      default = 1
+      minimum = 1
+      maximum = 10
+    }
+
+    rule {
+      metric_trigger {
+        metric_name        = "Percentage CPU"
+        metric_resource_id = "${azurerm_virtual_machine_scale_set.load_balancer.id}"
+        time_grain         = "PT1M"
+        statistic          = "Average"
+        time_window        = "PT5M"
+        time_aggregation   = "Average"
+        operator           = "GreaterThan"
+        threshold          = 90
+      }
+
+      scale_action {
+        direction = "Increase"
+        type      = "ChangeCount"
+        value     = "2"
+        cooldown  = "PT1M"
+      }
+    }
+
+    rule {
+      metric_trigger {
+        metric_name        = "Percentage CPU"
+        metric_resource_id = "${azurerm_virtual_machine_scale_set.example.id}"
+        time_grain         = "PT1M"
+        statistic          = "Average"
+        time_window        = "PT5M"
+        time_aggregation   = "Average"
+        operator           = "LessThan"
+        threshold          = 10
+      }
+
+      scale_action {
+        direction = "Decrease"
+        type      = "ChangeCount"
+        value     = "2"
+        cooldown  = "PT1M"
+      }
+    }
+
+    recurrence {
+      frequency = "Week"
+      timezone  = "Pacific Standard Time"
+      days      = ["Saturday", "Sunday"]
+      hours     = [12]
+      minutes   = [0]
+    }
+  }
+
+  notification {
+    email {
+      send_to_subscription_administrator    = true
+      send_to_subscription_co_administrator = true
+      custom_emails                         = ["anglekar.s@husky.neu.edu"]
+    }
+  }
+}
 
 
 
