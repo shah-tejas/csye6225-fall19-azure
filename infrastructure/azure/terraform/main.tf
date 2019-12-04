@@ -430,29 +430,29 @@ resource "azurerm_postgresql_database" "example" {
 resource "azurerm_virtual_network" "firewall" {
   name                = "testvnet"
   address_space       = ["10.0.0.0/16"]
-  location            = "${azurerm_resource_group.ccwebapp.location}"
-  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+  location            = "${data.azurerm_resource_group.ccwebapp.location}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
 }
 
 resource "azurerm_subnet" "firewall" {
   name                 = "AzureFirewallSubnet"
-  resource_group_name  = "${azurerm_resource_group.ccwebapp.name}"
+  resource_group_name  = "${data.azurerm_resource_group.ccwebapp.name}"
   virtual_network_name = "${azurerm_virtual_network.firewall.name}"
   address_prefix       =  "10.0.1.0/24"
 }
 
 resource "azurerm_public_ip" "firewall" {
   name                = "testpip"
-  location            = "${azurerm_resource_group.ccwebapp.location}"
-  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+  location            = "${data.azurerm_resource_group.ccwebapp.location}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
   allocation_method   = "Static"
   sku                 = "Standard"
 }
 
 resource "azurerm_firewall" "firewall" {
   name                = "testfirewall"
-  location            = "${azurerm_resource_group.ccwebapp.location}"
-  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+  location            = "${data.azurerm_resource_group.ccwebapp.location}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
   ip_configuration {
     name                 = "configuration"
     subnet_id            = "${azurerm_subnet.firewall.id}"
@@ -463,7 +463,7 @@ resource "azurerm_firewall" "firewall" {
 resource "azurerm_firewall_application_rule_collection" "firewall" {
   name                = "testcollection"
   azure_firewall_name = "${azurerm_firewall.firewall.name}"
-  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
   priority            = 100
   action              = "Allow"
   rule {
@@ -491,6 +491,11 @@ resource "azurerm_cosmosdb_account" "ccwebapp-cosmos-db" {
   resource_group_name = data.azurerm_resource_group.ccwebapp.name
   offer_type          = "Standard"
   kind                = "GlobalDocumentDB"
+  consistency_policy {
+    consistency_level       = "BoundedStaleness"
+    max_interval_in_seconds = 10
+    max_staleness_prefix    = 200
+  }
    geo_location {
     location          = data.azurerm_resource_group.ccwebapp.location
     failover_priority = 0
