@@ -265,7 +265,6 @@ resource "azurerm_postgresql_firewall_rule" "example" {
   end_ip_address      = "255.255.255.255"
 }
 
-<<<<<<< HEAD
 # resource "azurerm_storage_blob" "storage_blob" {
 #   name = "webapp.${var.env}.${var.domainName}"
 #   resource_group_name = "${azurerm_resource_group.storage_blob.name}"
@@ -562,32 +561,3 @@ resource "azurerm_firewall_application_rule_collection" "firewall" {
     }
   }
 }
-=======
-resource "azurerm_postgresql_database" "example" {
-  name                = "random"
-  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
-  server_name         = "${azurerm_postgresql_server.example.name}"
-  charset             = "UTF8"
-  collation           = "English_United States.1252"
-}
-
-
-resource "azurerm_cosmosdb_account" "ccwebapp-cosmos-db" {
-  name                = "ccwebapp-cosmos-db"
-  location            = azurerm_resource_group.ccwebapp.location
-  resource_group_name = azurerm_resource_group.ccwebapp.name
-  offer_type          = "Standard"
-  kind                = "GlobalDocumentDB"
-
-  consistency_policy {
-    consistency_level       = "BoundedStaleness"
-    max_interval_in_seconds = 10
-    max_staleness_prefix    = 200
-  }
-
-  geo_location {
-    location          = azurerm_resource_group.ccwebapp.location
-    failover_priority = 0
-  }
-}
->>>>>>> d1f659ccc5b15d44f1f6ed6ddc56dce8df119cc2
