@@ -272,3 +272,23 @@ resource "azurerm_postgresql_database" "example" {
   charset             = "UTF8"
   collation           = "English_United States.1252"
 }
+
+
+resource "azurerm_cosmosdb_account" "ccwebapp-cosmos-db" {
+  name                = "ccwebapp-cosmos-db"
+  location            = azurerm_resource_group.ccwebapp.location
+  resource_group_name = azurerm_resource_group.ccwebapp.name
+  offer_type          = "Standard"
+  kind                = "GlobalDocumentDB"
+
+  consistency_policy {
+    consistency_level       = "BoundedStaleness"
+    max_interval_in_seconds = 10
+    max_staleness_prefix    = 200
+  }
+
+  geo_location {
+    location          = azurerm_resource_group.ccwebapp.location
+    failover_priority = 0
+  }
+}
