@@ -51,12 +51,7 @@ resource "azurerm_public_ip" "network_public_ip2" {
   name = "vm_public_ip"
   resource_group_name = data.azurerm_resource_group.ccwebapp.name
   location = data.azurerm_resource_group.ccwebapp.location
-  allocation_method = "Dynamic"
-}
-
-data "azurerm_public_ip" "public_ip_vm" {
-  name = "vm_public_ip"
-  resource_group_name = data.azurerm_resource_group.ccwebapp.name
+  allocation_method = "Static"
 }
 
 //resource "azurerm_network_security_group" "network_sg" {
@@ -113,7 +108,7 @@ data "azurerm_public_ip" "public_ip_vm" {
 
 data "azurerm_image" "custom" {
   name_regex                = "csye6225_*"
-  resource_group_name = "myResourceGroup"
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
   sort_descending = true
 }
 
@@ -509,10 +504,16 @@ data "azurerm_dns_zone" "hosted_zone" {
   name = var.domain_name
 }
 
+data "azurerm_public_ip" "public_ip_address" {
+  name = azurerm_public_ip.network_public_ip2.name
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
+}
+
 resource "azurerm_dns_a_record" "loadbalancer_record" {
   name = "loadbalancer_alias"
-  records = [data.azurerm_public_ip.public_ip_vm.ip_address]
+  records = [data.azurerm_public_ip.public_ip_address.ip_address]
   resource_group_name = data.azurerm_resource_group.ccwebapp.name
   ttl = 60
   zone_name = data.azurerm_dns_zone.hosted_zone.name
+  depends_on = [azurerm_virtual_machine_scale_set.vm-autoscale]
 }
