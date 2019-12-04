@@ -132,6 +132,11 @@ resource "azurerm_virtual_machine" "main" {
   os_profile {
     computer_name = "hostname"
     admin_username = "testadmin"
+    custom_data = templatefile("${path.module}/prepare_azure_vm.sh", {
+        azure_db_endpoint = "jdbc:postgresql://${azurerm_postgresql_server.example.name}.postgres.database.azure.com:5432/${var.db_username}@${azurerm_postgresql_server.example.name}",
+        azure_db_username = "${var.db_username}@${azurerm_postgresql_server.example.name}",
+        azure_db_password = "${var.db_password}"
+      })
   }
   os_profile_linux_config {
     disable_password_authentication = true
@@ -229,8 +234,8 @@ resource "azurerm_postgresql_server" "example" {
     geo_redundant_backup  = "Disabled"
   }
 
-  administrator_login          = "psqladminun"
-  administrator_login_password = "H@Sh1CoR3!"
+  administrator_login          = var.db_username
+  administrator_login_password = var.db_password
   version                      = "9.5"
   ssl_enforcement              = "Disabled"
 }
@@ -261,7 +266,7 @@ resource "azurerm_postgresql_firewall_rule" "example" {
 }
 
 resource "azurerm_postgresql_database" "example" {
-  name                = "exampledb"
+  name                = "random"
   resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
   server_name         = "${azurerm_postgresql_server.example.name}"
   charset             = "UTF8"

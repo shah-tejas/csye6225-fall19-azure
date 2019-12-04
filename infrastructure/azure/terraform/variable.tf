@@ -24,3 +24,17 @@ variable "ssh_public_key" {
   type = "string"
   description = "SSH Public key to ssh into the VM"
 }
+
+# DB username
+variable "db_username" {
+  type = "string"
+  default = "dbadmin"
+  description = "The username for the database"
+}
+
+# DB username
+variable "db_password" {
+  type = "string"
+  default = "Cloud!23"
+  description = "The password for the database"
+}
