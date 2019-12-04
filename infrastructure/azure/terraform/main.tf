@@ -2,24 +2,23 @@
 # Configure the provider
 provider "azurerm" {}
 
-# Create the resource group
-resource "azurerm_resource_group" "ccwebapp" {
-  location = var.region
-  name = "ccwebapp_infrastructure"
+# Fetch the resource group
+data "azurerm_resource_group" "ccwebapp" {
+  name = var.resource_group_name
 }
 
 resource "azurerm_virtual_network" "app_network" {
   address_space = [var.network_address]
-  location = azurerm_resource_group.ccwebapp.location
+  location = data.azurerm_resource_group.ccwebapp.location
   name = "app_virtual_network"
-  resource_group_name = azurerm_resource_group.ccwebapp.name
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
 }
 
 resource "azurerm_subnet" "main" {
   count = 2
 
   name = "subnet-${count.index}"
-  resource_group_name = azurerm_resource_group.ccwebapp.name
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
   virtual_network_name = azurerm_virtual_network.app_network.name
   address_prefix = var.subnet_addresses[count.index]
 }
@@ -50,9 +49,14 @@ resource "azurerm_subnet" "main" {
 
 resource "azurerm_public_ip" "network_public_ip2" {
   name = "vm_public_ip"
-  resource_group_name = azurerm_resource_group.ccwebapp.name
-  location = var.region
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
+  location = data.azurerm_resource_group.ccwebapp.location
   allocation_method = "Dynamic"
+}
+
+data "azurerm_public_ip" "public_ip_vm" {
+  name = "vm_public_ip"
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
 }
 
 //resource "azurerm_network_security_group" "network_sg" {
@@ -160,9 +164,9 @@ data "azurerm_image" "custom" {
 
 # LOAD BALANCER
 resource "azurerm_lb" "vm-loadbalancer" {
-  location = var.region
+  location = data.azurerm_resource_group.ccwebapp.location
   name = "ccwebapp-loadbalancer"
-  resource_group_name = azurerm_resource_group.ccwebapp.name
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
 
   frontend_ip_configuration {
     name = "PublicIPForLB"
@@ -173,14 +177,14 @@ resource "azurerm_lb" "vm-loadbalancer" {
 resource "azurerm_lb_backend_address_pool" "lb-backend" {
   loadbalancer_id = azurerm_lb.vm-loadbalancer.id
   name = "BackEnd-for-lb"
-  resource_group_name = azurerm_resource_group.ccwebapp.name
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
 }
 
 resource "azurerm_lb_probe" "vm-loadbalancer-probe" {
   loadbalancer_id = azurerm_lb.vm-loadbalancer.id
   name = "vm-probe"
   port = 8080
-  resource_group_name = azurerm_resource_group.ccwebapp.name
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
 }
 
 resource "azurerm_lb_rule" "lb-rule" {
@@ -190,13 +194,13 @@ resource "azurerm_lb_rule" "lb-rule" {
   loadbalancer_id = azurerm_lb.vm-loadbalancer.id
   name = "http"
   protocol = "Tcp"
-  resource_group_name = azurerm_resource_group.ccwebapp.name
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
 }
 
 resource "azurerm_virtual_machine_scale_set" "vm-autoscale" {
-  location = var.region
+  location = data.azurerm_resource_group.ccwebapp.location
   name = "VM-Autoscale"
-  resource_group_name = azurerm_resource_group.ccwebapp.name
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
   upgrade_policy_mode = "Manual"
 
   network_profile {
@@ -244,9 +248,9 @@ resource "azurerm_virtual_machine_scale_set" "vm-autoscale" {
 }
 
 resource "azurerm_monitor_autoscale_setting" "vm-autoscale-setting" {
-  location = var.region
+  location = data.azurerm_resource_group.ccwebapp.location
   name = "AutoscalingForVM"
-  resource_group_name = azurerm_resource_group.ccwebapp.name
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
   target_resource_id = azurerm_virtual_machine_scale_set.vm-autoscale.id
   enabled = true
   profile {
@@ -291,6 +295,11 @@ resource "azurerm_monitor_autoscale_setting" "vm-autoscale-setting" {
         type = "ChangeCount"
         value = 1
       }
+    }
+  }
+  notification {
+    email {
+      custom_emails = [var.alert_email]
     }
   }
 }
@@ -361,9 +370,9 @@ resource "azurerm_monitor_autoscale_setting" "vm-autoscale-setting" {
 
 
 resource "azurerm_postgresql_server" "example" {
-  name                = "ccwebapp-postgresql"
-  location            = "${azurerm_resource_group.ccwebapp.location}"
-  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+  name                = "postgresql-${var.hosted_zone_name}"
+  location            = "${data.azurerm_resource_group.ccwebapp.location}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
 
   sku {
     name     = "GP_Gen5_2"
@@ -386,7 +395,7 @@ resource "azurerm_postgresql_server" "example" {
 
 resource "azurerm_postgresql_virtual_network_rule" "example" {
   name                                 = "postgresql-vnet-rule"
-  resource_group_name                  = "${azurerm_resource_group.ccwebapp.name}"
+  resource_group_name                  = "${data.azurerm_resource_group.ccwebapp.name}"
   server_name                          = "${azurerm_postgresql_server.example.name}"
   subnet_id                            = "${azurerm_subnet.dbsub.id}"
   ignore_missing_vnet_service_endpoint = true
@@ -395,7 +404,7 @@ resource "azurerm_postgresql_virtual_network_rule" "example" {
 # DB SUBNET
 resource "azurerm_subnet" "dbsub" {
   name                 = "dbsubn"
-  resource_group_name  = "${azurerm_resource_group.ccwebapp.name}"
+  resource_group_name  = "${data.azurerm_resource_group.ccwebapp.name}"
   virtual_network_name = "${azurerm_virtual_network.app_network.name}"
   address_prefix       = "${var.subnet_addresses[2]}"
   service_endpoints    = ["Microsoft.Sql"]
@@ -403,7 +412,7 @@ resource "azurerm_subnet" "dbsub" {
 
 resource "azurerm_postgresql_firewall_rule" "example" {
   name                = "office"
-  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
   server_name         = "${azurerm_postgresql_server.example.name}"
   start_ip_address    = "0.0.0.0"
   end_ip_address      = "255.255.255.255"
@@ -411,7 +420,7 @@ resource "azurerm_postgresql_firewall_rule" "example" {
 
 resource "azurerm_postgresql_database" "example" {
   name                = "random"
-  resource_group_name = "${azurerm_resource_group.ccwebapp.name}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
   server_name         = "${azurerm_postgresql_server.example.name}"
   charset             = "UTF8"
   collation           = "English_United States.1252"
@@ -419,9 +428,9 @@ resource "azurerm_postgresql_database" "example" {
 
 
 resource "azurerm_cosmosdb_account" "ccwebapp-cosmos-db" {
-  name                = "ccwebapp-cosmos-db"
-  location            = azurerm_resource_group.ccwebapp.location
-  resource_group_name = azurerm_resource_group.ccwebapp.name
+  name                = "cosmos-${var.hosted_zone_name}"
+  location            = data.azurerm_resource_group.ccwebapp.location
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
   offer_type          = "Standard"
   kind                = "GlobalDocumentDB"
 
@@ -432,7 +441,21 @@ resource "azurerm_cosmosdb_account" "ccwebapp-cosmos-db" {
   }
 
   geo_location {
-    location          = azurerm_resource_group.ccwebapp.location
+    location          = data.azurerm_resource_group.ccwebapp.location
     failover_priority = 0
   }
+}
+
+# DNS
+# Fetch hosted zone
+data "azurerm_dns_zone" "hosted_zone" {
+  name = var.domain_name
+}
+
+resource "azurerm_dns_a_record" "loadbalancer_record" {
+  name = "loadbalancer_alias"
+  records = [data.azurerm_public_ip.public_ip_vm.ip_address]
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
+  ttl = 60
+  zone_name = data.azurerm_dns_zone.hosted_zone.name
 }
