@@ -422,18 +422,20 @@ resource "azurerm_postgresql_database" "example" {
 }
 
 #Firewall
+
 resource "azurerm_virtual_network" "firewall" {
   name                = "testvnet"
-  address_space       = ["10.0.0.0/16"]
+  address_space       = [var.network_address]
   location            = "${data.azurerm_resource_group.ccwebapp.location}"
   resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
 }
 
+
 resource "azurerm_subnet" "firewall" {
-  name                 = "AzureFirewallSubnet"
-  resource_group_name  = "${data.azurerm_resource_group.ccwebapp.name}"
+  name = "AzureFirewallSubnet"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
   virtual_network_name = "${azurerm_virtual_network.firewall.name}"
-  address_prefix       =  "10.0.1.0/24"
+  address_prefix = "10.0.2.0/24"
 }
 
 resource "azurerm_public_ip" "firewall" {
@@ -450,7 +452,7 @@ resource "azurerm_firewall" "firewall" {
   resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
   ip_configuration {
     name                 = "configuration"
-    subnet_id            = "${azurerm_subnet.firewall.id}"
+    subnet_id            =  "${azurerm_subnet.firewall.id}"
     public_ip_address_id = "${azurerm_public_ip.firewall.id}"
   }
 }
@@ -480,23 +482,22 @@ resource "azurerm_firewall_application_rule_collection" "firewall" {
 }
 
 #CosmosDB
-resource "azurerm_cosmosdb_account" "ccwebapp-cosmos-db" {
-  name                = "cosmos-${var.hosted_zone_name}"
-  location            = data.azurerm_resource_group.ccwebapp.location
-  resource_group_name = data.azurerm_resource_group.ccwebapp.name
-  offer_type          = "Standard"
-  kind                = "GlobalDocumentDB"
-  consistency_policy {
-    consistency_level       = "BoundedStaleness"
-    max_interval_in_seconds = 10
-    max_staleness_prefix    = 200
-  }
-   geo_location {
-    location          = data.azurerm_resource_group.ccwebapp.location
-    failover_priority = 0
-  }
- 
-}
+# resource "azurerm_cosmosdb_account" "ccwebapp-cosmos-db" {
+#   name                = "cosmos-${var.hosted_zone_name}"
+#   location            = data.azurerm_resource_group.ccwebapp.location
+#   resource_group_name = data.azurerm_resource_group.ccwebapp.name
+#   offer_type          = "Standard"
+#   kind                = "GlobalDocumentDB"
+#   consistency_policy {
+#     consistency_level       = "BoundedStaleness"
+#     max_interval_in_seconds = 10
+#     max_staleness_prefix    = 200
+#   }
+#    geo_location {
+#     location          = data.azurerm_resource_group.ccwebapp.location
+#     failover_priority = 0
+#   }
+# }
 
 # DNS
 # Fetch hosted zone
