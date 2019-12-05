@@ -520,7 +520,7 @@ resource "azurerm_dns_a_record" "loadbalancer_record" {
 }
 
 resource "azurerm_storage_account" "function_storage_acc" {
-  name = "ishitafuncstorage"
+  name = "${var.hosted_zone_name}storage"
   resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
   location = "${data.azurerm_resource_group.ccwebapp.location}"
   account_tier = "Standard"
