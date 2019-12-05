@@ -53,3 +53,8 @@ variable "resource_group_name" {
   default = "ccwebapp_infrastructure"
   description = "Resource group name"
 }
+
+variable "functionapp" {
+  type = "string"
+  default = "./function.zip"
+}
