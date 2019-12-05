@@ -482,22 +482,22 @@ resource "azurerm_firewall_application_rule_collection" "firewall" {
 }
 
 #CosmosDB
-# resource "azurerm_cosmosdb_account" "ccwebapp-cosmos-db" {
-#   name                = "cosmos-${var.hosted_zone_name}"
-#   location            = data.azurerm_resource_group.ccwebapp.location
-#   resource_group_name = data.azurerm_resource_group.ccwebapp.name
-#   offer_type          = "Standard"
-#   kind                = "GlobalDocumentDB"
-#   consistency_policy {
-#     consistency_level       = "BoundedStaleness"
-#     max_interval_in_seconds = 10
-#     max_staleness_prefix    = 200
-#   }
-#    geo_location {
-#     location          = data.azurerm_resource_group.ccwebapp.location
-#     failover_priority = 0
-#   }
-# }
+resource "azurerm_cosmosdb_account" "ccwebapp-cosmos-db" {
+  name                = "cosmos-${var.hosted_zone_name}"
+  location            = data.azurerm_resource_group.ccwebapp.location
+  resource_group_name = data.azurerm_resource_group.ccwebapp.name
+  offer_type          = "Standard"
+  kind                = "GlobalDocumentDB"
+  consistency_policy {
+    consistency_level       = "BoundedStaleness"
+    max_interval_in_seconds = 10
+    max_staleness_prefix    = 200
+  }
+   geo_location {
+    location          = data.azurerm_resource_group.ccwebapp.location
+    failover_priority = 0
+  }
+}
 
 # DNS
 # Fetch hosted zone
