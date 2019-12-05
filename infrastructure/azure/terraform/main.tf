@@ -518,3 +518,94 @@ resource "azurerm_dns_a_record" "loadbalancer_record" {
   zone_name = data.azurerm_dns_zone.hosted_zone.name
   depends_on = [azurerm_virtual_machine_scale_set.vm-autoscale]
 }
+
+resource "azurerm_storage_account" "function_storage_acc" {
+  name = "ishitafuncstorage"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+  location = "${data.azurerm_resource_group.ccwebapp.location}"
+  account_tier = "Standard"
+  account_replication_type = "LRS"
+}
+
+resource "azurerm_storage_container" "function_storage_container" {
+  name = "function-releases"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+  storage_account_name = "${azurerm_storage_account.function_storage_acc.name}"
+  container_access_type = "private"
+}
+
+resource "azurerm_storage_blob" "functionappcode" {
+  name = "function.zip"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+  storage_account_name = "${azurerm_storage_account.function_storage_acc.name}"
+  storage_container_name = "${azurerm_storage_container.function_storage_container.name}"
+  type = "block"
+  source = "${var.functionapp}"
+}
+
+data "azurerm_storage_account_sas" "sas" {
+  connection_string = "${azurerm_storage_account.function_storage_acc.primary_connection_string}"
+  https_only = false
+  start = "2019-01-01"
+  expiry = "2021-12-31"
+  resource_types {
+    object = true
+    container = false
+    service = false
+  }
+  services {
+    blob = true
+    queue = false
+    table = false
+    file = false
+  }
+  permissions {
+    read = true
+    write = false
+    delete = false
+    list = false
+    add = false
+    create = false
+    update = false
+    process = false
+  }
+}
+
+resource "azurerm_app_service_plan" "asp" {
+  name = "${var.hosted_zone_name}-plan"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+  location = "${data.azurerm_resource_group.ccwebapp.location}"
+  kind = "functionapp"
+  sku {
+    tier = "Dynamic"
+    size = "Y1"
+  }
+}
+
+resource "azurerm_application_insights" "function_insight" {
+  name                = "function-terraform-insights"
+  location            = "${data.azurerm_resource_group.ccwebapp.location}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+  application_type    = "Web"
+}
+
+resource "azurerm_function_app" "functions" {
+  name = "${var.hosted_zone_name}functionapp"
+  location = "${data.azurerm_resource_group.ccwebapp.location}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+  app_service_plan_id = "${azurerm_app_service_plan.asp.id}"
+  storage_connection_string = "${azurerm_storage_account.function_storage_acc.primary_connection_string}"
+  version = "-3"
+
+  app_settings = {
+    "APPINSIGHTS_INSTRUMENTATIONKEY" = "${azurerm_application_insights.function_insight.instrumentation_key}"
+    FUNCTIONS_WORKER_RUNTIME = "node"
+  }
+}
+
+
+resource "azurerm_eventgrid_topic" "example" {
+  name                = "${var.hosted_zone_name}-eventgrid-topic"
+  location            = "${data.azurerm_resource_group.ccwebapp.location}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+}
