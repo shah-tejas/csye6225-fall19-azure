@@ -8,9 +8,9 @@ data "azurerm_resource_group" "ccwebapp" {
 }
 
 resource "azurerm_virtual_network" "app_network" {
+  name = "app_virtual_network"
   address_space = [var.network_address]
   location = data.azurerm_resource_group.ccwebapp.location
-  name = "app_virtual_network"
   resource_group_name = data.azurerm_resource_group.ccwebapp.name
 }
 
@@ -396,7 +396,7 @@ resource "azurerm_postgresql_virtual_network_rule" "example" {
   ignore_missing_vnet_service_endpoint = true
 }
 
-# DB SUBNET
+#DB SUBNET
 resource "azurerm_subnet" "dbsub" {
   name                 = "dbsubn"
   resource_group_name  = "${data.azurerm_resource_group.ccwebapp.name}"
