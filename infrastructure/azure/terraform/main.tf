@@ -421,21 +421,79 @@ resource "azurerm_postgresql_database" "example" {
   collation           = "English_United States.1252"
 }
 
+#Firewall
 
+resource "azurerm_virtual_network" "firewall" {
+  name                = "testvnet"
+  address_space       = [var.network_address]
+  location            = "${data.azurerm_resource_group.ccwebapp.location}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+}
+
+
+resource "azurerm_subnet" "firewall" {
+  name = "AzureFirewallSubnet"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+  virtual_network_name = "${azurerm_virtual_network.firewall.name}"
+  address_prefix = "10.0.2.0/24"
+}
+
+resource "azurerm_public_ip" "firewall" {
+  name                = "testpip"
+  location            = "${data.azurerm_resource_group.ccwebapp.location}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_firewall" "firewall" {
+  name                = "testfirewall"
+  location            = "${data.azurerm_resource_group.ccwebapp.location}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+  ip_configuration {
+    name                 = "configuration"
+    subnet_id            =  "${azurerm_subnet.firewall.id}"
+    public_ip_address_id = "${azurerm_public_ip.firewall.id}"
+  }
+}
+
+resource "azurerm_firewall_application_rule_collection" "firewall" {
+  name                = "testcollection"
+  azure_firewall_name = "${azurerm_firewall.firewall.name}"
+  resource_group_name = "${data.azurerm_resource_group.ccwebapp.name}"
+  priority            = 100
+  action              = "Allow"
+  rule {
+    name = "testrule"
+
+    source_addresses = [
+      "10.0.0.0/16",
+    ]
+
+    target_fqdns = [
+      "*.google.com",
+    ]
+
+    protocol {
+      port = "443"
+      type = "Https"
+    }
+  }
+}
+
+#CosmosDB
 resource "azurerm_cosmosdb_account" "ccwebapp-cosmos-db" {
   name                = "cosmos-${var.hosted_zone_name}"
   location            = data.azurerm_resource_group.ccwebapp.location
   resource_group_name = data.azurerm_resource_group.ccwebapp.name
   offer_type          = "Standard"
   kind                = "GlobalDocumentDB"
-
   consistency_policy {
     consistency_level       = "BoundedStaleness"
     max_interval_in_seconds = 10
     max_staleness_prefix    = 200
   }
-
-  geo_location {
+   geo_location {
     location          = data.azurerm_resource_group.ccwebapp.location
     failover_priority = 0
   }
